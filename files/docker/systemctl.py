@@ -1328,7 +1328,21 @@ class Systemctl:
     def extra_vars(self):
         return self._extra_vars # from command line
     def get_env(self, conf):
-        env = os.environ.copy()
+        # https://www.freedesktop.org/software/systemd/man/systemd.exec.html#Environment%20variables%20in%20spawned%20processes
+        if _user_mode:
+            env = os.environ.copy()
+        else:
+            import pwd
+            runuser = conf.data.get("Service", "User", "root")
+            p = pwd.getpwnam(runuser)
+            env = {
+                "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin. ",
+                "LANG": os.environ.get("LANG"),
+                "USER": runuser,
+                "LOGNAME": runuser,
+                "HOME": p.pw_dir,
+                "SHELL": p.pw_shell,
+            }
         for env_part in conf.data.getlist("Service", "Environment", []):
             for name, value in self.read_env_part(env_part):
                 env[name] = value # a '$word' is not special here
