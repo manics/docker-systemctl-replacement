@@ -1318,6 +1318,13 @@ class Systemctl:
                     yield name, value
         except Exception as e:
             logg.info("while reading %s: %s", env_part, e)
+    def read_env_pass(self, env_pass): # -> generate[ name ]
+        """ PassEnvironment=<name1> <name2> is being scanned """
+        try:
+            for name in env_pass.split():
+                yield name
+        except Exception as e:
+            logg.info("while reading %s: %s", env_pass, e)
     def show_environment(self, unit):
         """ [UNIT]. -- show environment parts """
         conf = self.load_unit_conf(unit)
@@ -1343,6 +1350,10 @@ class Systemctl:
                 "HOME": p.pw_dir,
                 "SHELL": p.pw_shell,
             }
+            for env_pass in conf.data.getlist("Service", "PassEnvironment", []):
+                for name in self.read_env_pass(env_pass):
+                    if name in os.environ:
+                        env[name] = os.getenv(name)
         for env_part in conf.data.getlist("Service", "Environment", []):
             for name, value in self.read_env_part(env_part):
                 env[name] = value # a '$word' is not special here
